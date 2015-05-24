@@ -297,7 +297,7 @@ class ChatClientThread extends Thread {
         System.out.println("starting key agreement");
         // Step 1:  Client generates a key pair
         KeyPairGenerator kpg = null;
-        SecretKey key = null;
+        //SecretKey key = null;
         Message msg = new Message("", "");
         try {
             kpg = KeyPairGenerator.getInstance("DH");
@@ -316,7 +316,7 @@ class ChatClientThread extends Thread {
             msg.setG(clientG);
             msg.setP(clientP);
             msg.setL(clientL);
-            msg.setPubKey(kp.getPublic());
+            msg.setPubKey(kp.getPublic().getEncoded());
             oos.writeObject(msg);
             oos.flush();
             oos.reset();
@@ -327,10 +327,10 @@ class ChatClientThread extends Thread {
             // Step 4 part 2:  Client performs the second phase of the
             //		protocol with Server's public key
             msg = (Message) ois.readObject();
-            PublicKey serverPubKey = msg.getPubKey();
+            byte[] serverPubKey = msg.getPubKey();
             System.out.println("serverPubKey - " + serverPubKey.hashCode());
             KeyFactory kf = KeyFactory.getInstance("DH");
-            X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(serverPubKey.getEncoded());
+            X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(serverPubKey);
             PublicKey pk = kf.generatePublic(x509Spec);
             ka.doPhase(pk, true);
             // Step 4 part 3:  Client can generate the secret key
@@ -354,12 +354,23 @@ class ChatClientThread extends Thread {
             c.init(Cipher.ENCRYPT_MODE, key);
             byte[] ciphertext = c.doFinal(msg.getMessage().getBytes());
             msg.setEncryptedMessage(ciphertext);
+            Message msgToSend = integrity(msg);
             oos.writeObject(msg);
             oos.flush();
             oos.reset();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes("UTF8");
+        md.update(ba);
+        byte[] digest = md.digest();
+        msg.setDigest(digest);
+        System.out.println("Result: Successfully hashed");
+        return msg;
     }
 }
 

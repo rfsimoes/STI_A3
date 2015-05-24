@@ -11,10 +11,11 @@ public class Message implements Serializable {
     private String username;
     private String message;
     private byte[] encryptedMessage;
-    private PublicKey pubKey;
+    private byte[] pubKey;
     private byte[] encryptedPubKey;
     private BigInteger P, G;
     private int L;
+    private byte[] digest;
 
     Message(String username, String message) {
         this.username = username;
@@ -42,11 +43,11 @@ public class Message implements Serializable {
         this.message = message;
     }
 
-    public PublicKey getPubKey() {
+    public byte[] getPubKey() {
         return pubKey;
     }
 
-    public void setPubKey(PublicKey pubKey) {
+    public void setPubKey(byte[] pubKey) {
         this.pubKey = pubKey;
     }
 
@@ -88,6 +89,14 @@ public class Message implements Serializable {
 
     public void setEncryptedPubKey(byte[] encryptedPubKey) {
         this.encryptedPubKey = encryptedPubKey;
+    }
+
+    public byte[] getDigest() {
+        return digest;
+    }
+
+    public void setDigest(byte[] digest) {
+        this.digest = digest;
     }
 }
 

@@ -7,6 +7,7 @@ import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.HashMap;
 import javax.crypto.*;
 import javax.crypto.interfaces.DHPublicKey;
@@ -177,38 +178,60 @@ public class ChatServer implements Runnable {
     }
 
     public synchronized void handle(int ID, String username, Message input) {
-        int leaving_id = findClient(ID);
-        if (input.getMessage().equals(".quit")) {
-            // Client exits
-            Message msg = new Message("SERVER", ".quit");
-            clients[leaving_id].send(msg);
-            // Notify remaing users
-            for (int i = 0; i < clientCount; i++)
-                if (i != leaving_id) {
-                    msg = new Message("SERVER", "Client " + username + " exits..");
-                    clients[i].send(msg);
-                }
-            remove(ID);
-        } else {
-            // Brodcast message for every other client online
-            SecretKey srcKey = clients[leaving_id].lookUser(username);
-            for (int i = 0; i < clientCount; i++) {
-                SecretKey destKey = clients[i].lookUser(clients[i].username);
-                Cipher c = null;
-                try {
-                    c = Cipher.getInstance("DES/ECB/PKCS5Padding");
-                    c.init(Cipher.ENCRYPT_MODE, destKey);
-                    byte[] ciphertext = c.doFinal(
-                            srcKey.getEncoded());
-                    input.setEncryptedPubKey(ciphertext);
-                    clients[i].send(input);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-            }
+        boolean integrity = false;
+        try {
+            integrity = checkIntegrity(input);
+        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
+            System.out.println("Error checking message integrity - "+e.getMessage());
         }
 
+        if (integrity) {
+            int leaving_id = findClient(ID);
+            if (input.getMessage().equals(".quit")) {
+                // Client exits
+                Message msg = new Message("SERVER", ".quit");
+                clients[leaving_id].send(msg);
+                // Notify remaing users
+                for (int i = 0; i < clientCount; i++)
+                    if (i != leaving_id) {
+                        msg = new Message("SERVER", "Client " + username + " exits..");
+                        clients[i].send(msg);
+                    }
+                remove(ID);
+            } else {
+                // Brodcast message for every other client online
+                SecretKey srcKey = clients[leaving_id].lookUser(username);
+                for (int i = 0; i < clientCount; i++) {
+                    SecretKey destKey = clients[i].lookUser(clients[i].username);
+                    Cipher c = null;
+                    try {
+                        c = Cipher.getInstance("DES/ECB/PKCS5Padding");
+                        c.init(Cipher.ENCRYPT_MODE, destKey);
+                        byte[] ciphertext = c.doFinal(
+                                srcKey.getEncoded());
+                        input.setEncryptedPubKey(ciphertext);
+                        clients[i].send(input);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } else {
+            System.out.println("Integrity test failed.");
+        }
+
+
+    }
+
+    private boolean checkIntegrity(Message input) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] ba = (input.getUsername() + input.getMessage()).getBytes("UTF8");
+        md.update(ba);
+        byte[] digest = md.digest();
+        if (Arrays.equals(digest, input.getDigest()))
+            return true;
+        else
+            return false;
     }
 
     public synchronized void remove(int ID) {
@@ -438,7 +461,7 @@ class ChatServerThread extends Thread {
             clientP = msg.getP();
             clientG = msg.getG();
             clientL = msg.getL();
-            PublicKey clientPubKey = msg.getPubKey();
+            byte[] clientPubKey = msg.getPubKey();
             System.out.println("ClientPubKey - " + clientPubKey.hashCode());
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
             DHParameterSpec dhSpec = new DHParameterSpec(clientP, clientG, clientL);
@@ -448,7 +471,7 @@ class ChatServerThread extends Thread {
             System.out.println("serverPubKey - " + kp.getPublic().hashCode());
             msg.setUsername("SERVER");
             msg.setMessage("KEYAGREEMENT3");
-            msg.setPubKey(kp.getPublic());
+            msg.setPubKey(kp.getPublic().getEncoded());
             oos.writeObject(msg);
             oos.flush();
             oos.reset();
@@ -459,7 +482,7 @@ class ChatServerThread extends Thread {
             // Step 5 part 2:  Server uses Client's public key to perform
             //		the second phase of the protocol.
             KeyFactory kf = KeyFactory.getInstance("DH");
-            X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(clientPubKey.getEncoded());
+            X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(clientPubKey);
             PublicKey pk = kf.generatePublic(x509Spec);
             ka.doPhase(pk, true);
             // Step 5 part 3:  Server generates the secret key
