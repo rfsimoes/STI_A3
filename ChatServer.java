@@ -21,10 +21,10 @@ public class ChatServer implements Runnable {
     private String pathToDecryptedUsersFile = "files/usersInformationDecrypted";*/
     protected String keyStoreFilename = "my.keystore";
     protected String keyStorePassword = "verygoodpassword";
-    private ChatServerThread clients[] = new ChatServerThread[20];
+    protected ChatServerThread[] clients = new ChatServerThread[20];
     private ServerSocket server_socket = null;
     private Thread thread = null;
-    private int clientCount = 0;
+    protected int clientCount = 0;
     //private String alias = "alias";
     private FileInputStream fis;
     private ObjectInputStream ois;
@@ -35,6 +35,9 @@ public class ChatServer implements Runnable {
     public ChatServer(int port) {
         try {
             System.out.println("Server is starting...");
+            System.out.println("Starting KeyManagement");
+            KeyManagement km = new KeyManagement(this);
+            km.start();
             System.out.println("Loading keystore...");
             loadKeyStore();
             System.out.println("Loaded keystore...");
@@ -167,6 +170,7 @@ public class ChatServer implements Runnable {
             thread.stop();
             thread = null;
         }
+
     }
 
     private int findClient(int ID) {
@@ -182,7 +186,7 @@ public class ChatServer implements Runnable {
         try {
             integrity = checkIntegrity(input);
         } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
-            System.out.println("Error checking message integrity - "+e.getMessage());
+            System.out.println("Error checking message integrity - " + e.getMessage());
         }
 
         if (integrity) {
@@ -198,10 +202,18 @@ public class ChatServer implements Runnable {
                         clients[i].send(msg);
                     }
                 remove(ID);
+            } else if (input.getMessage().equals("RENEW")) {
+                try {
+                    clients[findClient(ID)].keyAgreement();
+                } catch (Exception e) {
+                    System.out.println("USER NOT FOUN " + username);
+                }
             } else {
                 // Brodcast message for every other client online
                 SecretKey srcKey = clients[leaving_id].lookUser(username);
                 for (int i = 0; i < clientCount; i++) {
+                    Message msg = new Message("", "");
+                    msg = input;
                     SecretKey destKey = clients[i].lookUser(clients[i].username);
                     Cipher c = null;
                     try {
@@ -209,8 +221,8 @@ public class ChatServer implements Runnable {
                         c.init(Cipher.ENCRYPT_MODE, destKey);
                         byte[] ciphertext = c.doFinal(
                                 srcKey.getEncoded());
-                        input.setEncryptedPubKey(ciphertext);
-                        clients[i].send(input);
+                        msg.setEncryptedPubKey(ciphertext);
+                        clients[i].send(msg);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -294,6 +306,7 @@ class ChatServerThread extends Thread {
     private byte[] clientKey;
     private byte[] serverKey;
     protected String username;
+    protected long timestamp;
 
     public ChatServerThread(ChatServer _server, Socket _socket) {
         super();
@@ -301,6 +314,7 @@ class ChatServerThread extends Thread {
         socket = _socket;
         ID = socket.getPort();
         msg = new Message("", "");
+        timestamp = System.currentTimeMillis();
     }
 
     // Sends message to client
@@ -451,7 +465,7 @@ class ChatServerThread extends Thread {
         }
     }
 
-    private SecretKey keyAgreement() {
+    protected SecretKey keyAgreement() {
         Message msg;
         // Step 3:  Server uses the parameters supplied by client
         //		to generate a key pair and sends the public key
@@ -523,6 +537,16 @@ class ChatServerThread extends Thread {
 
     }
 
+    protected Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes("UTF8");
+        md.update(ba);
+        byte[] digest = md.digest();
+        msg.setDigest(digest);
+        System.out.println("Result: Successfully hashed");
+        return msg;
+    }
+
 
     // Opens thread
     public void open() throws IOException {
@@ -555,6 +579,72 @@ class ChatServerThread extends Thread {
         if (socket != null) socket.close();
         if (streamIn != null) streamIn.close();
         if (streamOut != null) streamOut.close();
+    }
+
+
+}
+
+class KeyManagement extends Thread {
+    private ChatServer server;
+
+    KeyManagement(ChatServer server) {
+        this.server = server;
+    }
+
+    public void run() {
+        while (true) {
+            try {
+                Thread.sleep(60000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            checkKeys();
+        }
+    }
+
+    private void checkKeys() {
+        for (int i = 0; i < server.clientCount; i++) {
+            if (System.currentTimeMillis() - server.clients[i].timestamp > 30000) {
+                System.out.println("client " + server.clients[i].username + " needs to renew key.");
+                Message msg = new Message("SERVER", "RENEWKEY");
+                try {
+                    msg = server.clients[i].integrity(msg);
+                    server.clients[i].oos.writeObject(msg);
+                    server.clients[i].oos.flush();
+                    server.clients[i].oos.reset();
+                    server.ks.deleteEntry(server.clients[i].username);
+                    savaKeyStore();
+                } catch (IOException | NoSuchAlgorithmException | KeyStoreException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+    }
+
+    private void savaKeyStore() {
+        KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(server.keyStorePassword.toCharArray());
+        // save keystore
+        java.io.FileOutputStream fos = null;
+        try {
+            try {
+                // store away the keystore
+                fos = new FileOutputStream(server.keyStoreFilename);
+                server.ks.store(fos, server.keyStorePassword.toCharArray());
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                e.printStackTrace();
+            }
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
 

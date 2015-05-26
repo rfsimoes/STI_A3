@@ -11,6 +11,7 @@ import javax.net.ssl.SSLSocketFactory;
 import java.math.BigInteger;
 import java.net.*;
 import java.io.*;
+import java.nio.file.Files;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Scanner;
@@ -29,6 +30,7 @@ public class ChatClient implements Runnable {
     private ChatClientThread client = null;
     private boolean secureConnection = false;
     private String username;
+    protected String keyStoreFilename = "my.keystore";
 
     public ChatClient(String serverName, int serverPort) {
         System.out.println("Establishing connection to server...");
@@ -74,6 +76,22 @@ public class ChatClient implements Runnable {
             // Leaving, quit command
             System.out.println("Exiting...Please press RETURN to exit ...");
             stop();
+        } else if (msg.getUsername().equals("SERVER") && msg.getMessage().equals("RENEWKEY")) {
+           /* msg = new Message(username, "RENEW");
+            try {
+                msg.setUsername(username);
+                msg = client.integrity(msg);
+                client.sendMessage(msg);
+                client.oos.writeObject(msg);
+                client.oos.flush();
+                client.oos.reset();
+                client.keyAgreement();
+            } catch (NoSuchAlgorithmException | IOException e) {
+                e.printStackTrace();
+            }*/
+            System.out.println("Restart client to create new key");
+            stop();
+
         } else if (msg.getUsername().equals("SERVER"))
             // else, writes message received from server to console
             System.out.println(msg.getUsername() + " " + msg.getMessage());
@@ -109,20 +127,32 @@ public class ChatClient implements Runnable {
 
     // Stops client thread
     public void stop() {
-        System.out.println("STOP");
+        File file = new File(username+".file");
+
+        if(file.delete()){
+            System.out.println(file.getName() + " is deleted!");
+        }else{
+            System.out.println("Delete operation is failed.");
+        }
+
         if (thread != null) {
             thread.stop();
             thread = null;
         }
+        //System.out.println("BENFICA 1");
         try {
             if (console != null) console.close();
+           // System.out.println("IF 1");
             //if (oos != null) oos.close();
             if (socket != null) socket.close();
+            //System.out.println("IF 2");
         } catch (IOException ioe) {
             System.out.println("Error closing thread...");
         }
+       // System.out.println("BENFICA 2");
         client.close();
         client.stop();
+        System.exit(0);
     }
 
 
@@ -143,7 +173,7 @@ class ChatClientThread extends Thread {
     private Socket sslsocket = null;
     private ChatClient client = null;
     private ObjectInputStream ois = null;
-    private ObjectOutputStream oos = null;
+    protected ObjectOutputStream oos = null;
     private ObjectInputStream sois = null;
     protected ObjectOutputStream soos = null;
     private String username;
@@ -293,7 +323,7 @@ class ChatClientThread extends Thread {
         writeStringToFile(file, data);
     }
 
-    private SecretKey keyAgreement() {
+    protected SecretKey keyAgreement() {
         System.out.println("starting key agreement");
         // Step 1:  Client generates a key pair
         KeyPairGenerator kpg = null;
@@ -355,7 +385,7 @@ class ChatClientThread extends Thread {
             byte[] ciphertext = c.doFinal(msg.getMessage().getBytes());
             msg.setEncryptedMessage(ciphertext);
             Message msgToSend = integrity(msg);
-            oos.writeObject(msg);
+            oos.writeObject(msgToSend);
             oos.flush();
             oos.reset();
         } catch (Exception e) {
@@ -363,7 +393,7 @@ class ChatClientThread extends Thread {
         }
     }
 
-    private Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    protected Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes("UTF8");
         md.update(ba);
