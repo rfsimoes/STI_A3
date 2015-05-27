@@ -1,3 +1,5 @@
+import Utilities.CryptoUtils;
+
 import java.io.*;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
@@ -6,6 +8,8 @@ import java.net.Socket;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +34,8 @@ public class ChatServer implements Runnable {
     private ObjectInputStream ois;
     private HashMap<String, String> usersCache;
     protected KeyStore ks;
+    private PublicKey publicKey;
+    private PrivateKey privateKey;
 
 
     public ChatServer(int port) {
@@ -41,6 +47,7 @@ public class ChatServer implements Runnable {
             System.out.println("Loading keystore...");
             loadKeyStore();
             System.out.println("Loaded keystore...");
+            generatePrivPubKeys();
             //loadUsers();
            /* for (String key : usersCache.keySet())
                 System.out.println(key + " " + usersCache.get(key));*/
@@ -52,6 +59,39 @@ public class ChatServer implements Runnable {
         } catch (IOException ioexception) {
             // Error binding to port
             System.out.println("Binding error (port=" + port + "): " + ioexception.getMessage());
+        }
+    }
+
+    private void generatePrivPubKeys() {
+        KeyPairGenerator kpg = null;
+        try {
+            kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(1024);
+            KeyPair kp = kpg.genKeyPair();
+            publicKey = kp.getPublic();
+            privateKey = kp.getPrivate();
+            KeyFactory fact = KeyFactory.getInstance("RSA");
+            RSAPublicKeySpec pub = fact.getKeySpec(kp.getPublic(), RSAPublicKeySpec.class);
+            RSAPrivateKeySpec priv = fact.getKeySpec(kp.getPrivate(), RSAPrivateKeySpec.class);
+
+            saveToFile("serverpublic.key", "serverpublicencrypted.key", pub.getModulus(), pub.getPublicExponent());
+            saveToFile("serverprivate.key", "serverprivateencrypted.key", priv.getModulus(), priv.getPrivateExponent());
+            CryptoUtils cu = new CryptoUtils();
+            cu.encrypt(keyStorePassword, new File("serverprivate.key"), new File("serverprivateencrypted.key"));
+        } catch (Exception e) {
+            System.out.println("Error [generatePrivPubKeys] - " + e.getMessage());
+        }
+    }
+
+    public void saveToFile(String fileName, String fileNameEnc, BigInteger mod, BigInteger exp) throws IOException {
+        ObjectOutputStream oout = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)));
+        try {
+            oout.writeObject(mod);
+            oout.writeObject(exp);
+        } catch (Exception e) {
+            throw new IOException("Unexpected error", e);
+        } finally {
+            oout.close();
         }
     }
 
@@ -181,13 +221,56 @@ public class ChatServer implements Runnable {
         return -1;
     }
 
-    public synchronized void handle(int ID, String username, Message input) {
-        boolean integrity = false;
+    private PublicKey loadPubKeys(String pubName) {
+        ObjectInputStream oin = null;
+        CryptoUtils cu = new CryptoUtils();
+        PublicKey senderPublicKey;
         try {
+            //cu.decrypt(keyStorePassword, new File(pubNameEnc), new File(pubName));
+            FileInputStream in = new FileInputStream(pubName);
+            oin = new ObjectInputStream(new BufferedInputStream(in));
+
+            BigInteger m = (BigInteger) oin.readObject();
+            BigInteger e = (BigInteger) oin.readObject();
+            RSAPublicKeySpec keySpec = new RSAPublicKeySpec(m, e);
+            KeyFactory fact = KeyFactory.getInstance("RSA");
+            senderPublicKey = fact.generatePublic(keySpec);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Spurious serialisation error", e);
+        } finally {
+            try {
+                oin.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("BENFICACACACA "+senderPublicKey.hashCode());
+        return senderPublicKey;
+    }
+
+    public synchronized void handle(int ID, String username, Message input) {
+        boolean integrity = true;
+        /*try {
             integrity = checkIntegrity(input);
         } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
             System.out.println("Error checking message integrity - " + e.getMessage());
+        }*/
+        Signature myVerifySign = null;
+        boolean verifySign = false;
+        try {
+            myVerifySign = Signature.getInstance("MD5withRSA");
+            myVerifySign.initVerify(loadPubKeys(username + "public.key"));
+            myVerifySign.update(input.getStrMDofDataToTransmit().getBytes());
+            verifySign = myVerifySign.verify(input.getDigest());
+        } catch (Exception e) {
+            System.out.println("Error [handle] - " + e.getMessage());
         }
+
+        if (verifySign == false) {
+            System.out.println(" Error in validating Signature ");
+        } else
+            System.out.println(" Successfully validated Signature ");
 
         if (integrity) {
             int leaving_id = findClient(ID);

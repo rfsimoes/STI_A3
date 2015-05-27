@@ -16,6 +16,7 @@ public class Message implements Serializable {
     private BigInteger P, G;
     private int L;
     private byte[] digest;
+    private String strMDofDataToTransmit;
 
     Message(String username, String message) {
         this.username = username;
@@ -97,6 +98,14 @@ public class Message implements Serializable {
 
     public void setDigest(byte[] digest) {
         this.digest = digest;
+    }
+
+    public String getStrMDofDataToTransmit() {
+        return strMDofDataToTransmit;
+    }
+
+    public void setstrMDofDataToTransmit(String strMDofDataToTransmit) {
+        this.strMDofDataToTransmit = strMDofDataToTransmit;
     }
 }
 
