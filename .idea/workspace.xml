@@ -2,37 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8979e322-6c19-4412-b77c-308758f45f48" name="Default" comment="final">
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\DHAgreement.java" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\Utilities\CryptoException.java" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\Utilities\DHKeyAgreement2.java" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\Utilities\SymmetricEncryptionUtility.java" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\DHAgreement.class" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\Utilities\CryptoException.class" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\Utilities\DHKeyAgreement2.class" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\Utilities\SymmetricEncryptionUtility.class" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\my.keystore" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\rfsimoesprivate.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\rfsimoesprivateencrypted.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\rfsimoespublic.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\rfsimoessym.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\rfsimoessymencrypted.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\serverprivate.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\serverprivateencrypted.key" afterPath="" />
-      <change type="DELETED" beforePath="C:\Users\Nygma\Documents\Faculdade\STI\STI_A3\out\production\STI_A3\serverpublic.key" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/ChatClient.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/ChatClient.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/ChatClientThread.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/ChatClientThread.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/ChatServer.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/ChatServer.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/ChatServerThread.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/ChatServerThread.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/Utilities/CryptoUtils.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/Utilities/CryptoUtils.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/Utilities/CryptoUtilsTest.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/Utilities/CryptoUtilsTest.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/KeyManagement.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/KeyManagement.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/Message.class" afterPath="$PROJECT_DIR$/out/production/STI_A3/Message.class" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.md" afterPath="$PROJECT_DIR$/README.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ChatClient.java" afterPath="$PROJECT_DIR$/ChatClient.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ChatServer.java" afterPath="$PROJECT_DIR$/ChatServer.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Utilities/CryptoUtils.java" afterPath="$PROJECT_DIR$/Utilities/CryptoUtils.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Utilities/CryptoUtilsTest.java" afterPath="$PROJECT_DIR$/Utilities/CryptoUtilsTest.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Message.java" afterPath="$PROJECT_DIR$/Message.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/.idea/inspectionProfiles/Project_Default.xml" afterPath="$PROJECT_DIR$/out/production/STI_A3/.idea/inspectionProfiles/Project_Default.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/README.md" afterPath="$PROJECT_DIR$/out/production/STI_A3/README.md" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/libraries/commons_codec_1_10.xml" afterPath="$PROJECT_DIR$/.idea/libraries/commons_codec_1_10.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/.idea/libraries/commons_codec_1_10.xml" afterPath="$PROJECT_DIR$/out/production/STI_A3/.idea/libraries/commons_codec_1_10.xml" />
@@ -41,9 +16,10 @@
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/gitignore.io" afterPath="$PROJECT_DIR$/gitignore.io" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/gitignore.io" afterPath="$PROJECT_DIR$/out/production/STI_A3/gitignore.io" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/copyright/profiles_settings.xml" afterPath="$PROJECT_DIR$/.idea/copyright/profiles_settings.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/.idea/copyright/profiles_settings.xml" afterPath="$PROJECT_DIR$/out/production/STI_A3/.idea/copyright/profiles_settings.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/.idea/inspectionProfiles/profiles_settings.xml" afterPath="$PROJECT_DIR$/out/production/STI_A3/.idea/inspectionProfiles/profiles_settings.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/STI_A3/.idea/workspace.xml" afterPath="$PROJECT_DIR$/out/production/STI_A3/.idea/workspace.xml" />
     </list>
     <ignored path="STI_A3.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -69,7 +45,7 @@
       <file leaf-file-name="ChatServer.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ChatServer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.33333334">
+            <state vertical-scroll-proportion="0.5091384">
               <caret line="155" column="19" selection-start-line="155" selection-start-column="19" selection-end-line="155" selection-end-column="19" />
               <folding />
             </state>
@@ -662,16 +638,16 @@
       <workItem from="1432911017724" duration="1513000" />
       <workItem from="1433270164130" duration="335000" />
       <workItem from="1433277754339" duration="7280000" />
-      <workItem from="1433327634860" duration="375000" />
+      <workItem from="1433327634860" duration="592000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="141849000" />
+    <option name="totallyTimeSpent" value="142066000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1382" height="744" extended-state="7" />
-    <editor active="true" />
+    <frame x="-8" y="-8" width="1382" height="744" extended-state="6" />
+    <editor active="false" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -679,7 +655,7 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32843137" sideWeight="0.5030257" order="11" side_tool="true" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32952693" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32843137" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.25718608" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -1180,7 +1156,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/ChatServer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.33333334">
+        <state vertical-scroll-proportion="0.5091384">
           <caret line="155" column="19" selection-start-line="155" selection-start-column="19" selection-end-line="155" selection-end-column="19" />
           <folding />
         </state>
