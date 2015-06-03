@@ -1,7 +1,5 @@
 package Utilities;
 
-import Utilities.CryptoException;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -25,18 +23,16 @@ public class CryptoUtils {
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES";
 
-    public static void encrypt(String key, File inputFile, File outputFile)
-            throws CryptoException {
+    public static void encrypt(String key, File inputFile, File outputFile) {
         doCrypto(Cipher.ENCRYPT_MODE, key, inputFile, outputFile);
     }
 
-    public static void decrypt(String key, File inputFile, File outputFile)
-            throws CryptoException {
+    public static void decrypt(String key, File inputFile, File outputFile) {
         doCrypto(Cipher.DECRYPT_MODE, key, inputFile, outputFile);
     }
 
     private static void doCrypto(int cipherMode, String key, File inputFile,
-                                 File outputFile) throws CryptoException {
+                                 File outputFile) {
         try {
             Key secretKey = new SecretKeySpec(key.getBytes(), ALGORITHM);
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);

@@ -2,43 +2,32 @@ import Utilities.CryptoUtils;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
 import java.security.cert.CertificateException;
-import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
-import java.util.HashMap;
 import javax.crypto.*;
-import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DESKeySpec;
 import javax.crypto.spec.DHParameterSpec;
-import javax.net.ssl.*;
 
 
-public class ChatServer implements Runnable {
-    /*private String pathToEncryptedUsersFile = "files/usersInformationEncrypted";
-    private String pathToDecryptedUsersFile = "files/usersInformationDecrypted";*/
-    protected String keyStoreFilename = "my.keystore";
-    protected String keyStorePassword = "verygoodpassword";
-    protected ChatServerThread[] clients = new ChatServerThread[20];
+class ChatServer implements Runnable {
+    final String keyStoreFilename = "my.keystore";
+    final String keyStorePassword = "verygoodpassword";
+    final ChatServerThread[] clients = new ChatServerThread[20];
     private ServerSocket server_socket = null;
     private Thread thread = null;
-    protected int clientCount = 0;
-    //private String alias = "alias";
-    private FileInputStream fis;
-    private ObjectInputStream ois;
-    private HashMap<String, String> usersCache;
-    protected KeyStore ks;
+    int clientCount = 0;
+    KeyStore ks;
     private PublicKey publicKey;
     private PrivateKey privateKey;
 
 
-    public ChatServer(int port) {
+    private ChatServer(int port) {
         try {
             System.out.println("Server is starting...");
             System.out.println("Starting KeyManagement");
@@ -48,10 +37,6 @@ public class ChatServer implements Runnable {
             loadKeyStore();
             System.out.println("Loaded keystore...");
             generatePrivPubKeys();
-            //loadUsers();
-           /* for (String key : usersCache.keySet())
-                System.out.println(key + " " + usersCache.get(key));*/
-            // Binds to port and starts server
             System.out.println("Binding to port " + port);
             server_socket = new ServerSocket(port);
             System.out.println("Server started: " + server_socket);
@@ -63,7 +48,7 @@ public class ChatServer implements Runnable {
     }
 
     private void generatePrivPubKeys() {
-        KeyPairGenerator kpg = null;
+        KeyPairGenerator kpg;
         try {
             kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(1024);
@@ -74,24 +59,21 @@ public class ChatServer implements Runnable {
             RSAPublicKeySpec pub = fact.getKeySpec(kp.getPublic(), RSAPublicKeySpec.class);
             RSAPrivateKeySpec priv = fact.getKeySpec(kp.getPrivate(), RSAPrivateKeySpec.class);
 
-            saveToFile("serverpublic.key", "serverpublicencrypted.key", pub.getModulus(), pub.getPublicExponent());
-            saveToFile("serverprivate.key", "serverprivateencrypted.key", priv.getModulus(), priv.getPrivateExponent());
+            saveToFile("serverpublic.key", pub.getModulus(), pub.getPublicExponent());
+            saveToFile("serverprivate.key", priv.getModulus(), priv.getPrivateExponent());
             CryptoUtils cu = new CryptoUtils();
-            cu.encrypt(keyStorePassword, new File("serverprivate.key"), new File("serverprivateencrypted.key"));
+            CryptoUtils.encrypt(keyStorePassword, new File("serverprivate.key"), new File("serverprivateencrypted.key"));
         } catch (Exception e) {
             System.out.println("Error [generatePrivPubKeys] - " + e.getMessage());
         }
     }
 
-    public void saveToFile(String fileName, String fileNameEnc, BigInteger mod, BigInteger exp) throws IOException {
-        ObjectOutputStream oout = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)));
-        try {
+    private void saveToFile(String fileName, BigInteger mod, BigInteger exp) throws IOException {
+        try (ObjectOutputStream oout = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)))) {
             oout.writeObject(mod);
             oout.writeObject(exp);
         } catch (Exception e) {
             throw new IOException("Unexpected error", e);
-        } finally {
-            oout.close();
         }
     }
 
@@ -106,49 +88,17 @@ public class ChatServer implements Runnable {
             server = new ChatServer(Integer.parseInt(args[0]));
     }
 
-
-   /* private void loadUsers() {
-        usersCache = new HashMap<String, String>();
-        String line;
-        File encrypted, decrypted;
-        encrypted = new File(pathToEncryptedUsersFile);
-        decrypted = new File(pathToDecryptedUsersFile);
-
-        try {
-            decrypted.createNewFile();
-            CryptoUtils.decrypt(fileKey, encrypted, decrypted);
-            fis = new FileInputStream(pathToDecryptedUsersFile);
-            ois = new ObjectInputStream(fis);
-            while ((usersCache = (HashMap) ois.readObject()) != null) {
-                //usersCache.put(line.split(" ")[0], line.split(" ")[1]);
-            }
-        } catch (CryptoException e) {
-            System.out.println("Error decrypting users file - " + e.getMessage());
-        } catch (FileNotFoundException e) {
-            System.out.println("users file not found - " + e.getMessage());
-        } catch (EOFException e) {
-            System.out.println("Finished loading users. - " + e.getMessage());
-        } catch (IOException e) {
-            System.out.println("error loading users - " + e.getMessage());
-        } catch (ClassNotFoundException e) {
-            System.out.println(e.getMessage());
-        } finally {
-            try {
-                ois.close();
-                fis.close();
-            } catch (Exception e) {
-                System.out.println("Error closing input streams.");
-            }
-        }
-    }*/
-
+    /**
+     * Abre a keystore caso exista. Senão existir cria uma.
+     */
     private void loadKeyStore() {
         // get user password and file input stream
         char[] password = keyStorePassword.toCharArray();
+        java.io.FileInputStream fis = null;
         try {
             ks = KeyStore.getInstance("JCEKS");
 
-            java.io.FileInputStream fis = null;
+
             try {
                 fis = new java.io.FileInputStream(keyStoreFilename);
                 ks.load(fis, password);
@@ -172,11 +122,7 @@ public class ChatServer implements Runnable {
                         fos.close();
                     }
                 }
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            } catch (NoSuchAlgorithmException e1) {
-                e1.printStackTrace();
-            } catch (CertificateException e1) {
+            } catch (IOException | NoSuchAlgorithmException | CertificateException e1) {
                 e1.printStackTrace();
             }
         }
@@ -196,7 +142,7 @@ public class ChatServer implements Runnable {
         }
     }
 
-    public void start() {
+    private void start() {
         if (thread == null) {
             // Starts new thread for client
             thread = new Thread(this);
@@ -204,7 +150,7 @@ public class ChatServer implements Runnable {
         }
     }
 
-    public void stop() {
+    private void stop() {
         if (thread != null) {
             // Stops running thread for client
             thread.stop();
@@ -221,10 +167,16 @@ public class ChatServer implements Runnable {
         return -1;
     }
 
+    /**
+     * Carrega a chave publica de um utilizador.
+     *
+     * @param pubName Nome do ficheiro
+     * @return A chave publica do utilizador ou null
+     */
     private PublicKey loadPubKeys(String pubName) {
         ObjectInputStream oin = null;
         CryptoUtils cu = new CryptoUtils();
-        PublicKey senderPublicKey;
+        PublicKey senderPublicKey = null;
         try {
             //cu.decrypt(keyStorePassword, new File(pubNameEnc), new File(pubName));
             FileInputStream in = new FileInputStream(pubName);
@@ -237,7 +189,8 @@ public class ChatServer implements Runnable {
             senderPublicKey = fact.generatePublic(keySpec);
 
         } catch (Exception e) {
-            throw new RuntimeException("Spurious serialisation error", e);
+            //throw new RuntimeException("Spurious serialisation error", e);
+            System.out.println("Error [loadPubKeys] - " + e.getMessage());
         } finally {
             try {
                 oin.close();
@@ -245,18 +198,20 @@ public class ChatServer implements Runnable {
                 e.printStackTrace();
             }
         }
-        System.out.println("BENFICACACACA "+senderPublicKey.hashCode());
+        //System.out.println("BENFICACACACA "+senderPublicKey.hashCode());
         return senderPublicKey;
     }
 
+    /**
+     * Trata da mensagem recebida. Inicialmente é verifica se a assinatura da mensagem é válida. Se for valida faz
+     * o broadcast para todos os users.
+     *
+     * @param ID       Id do cliente
+     * @param username Nome de utilizador do cliente
+     * @param input    Mensagem que o cliente enviou
+     */
     public synchronized void handle(int ID, String username, Message input) {
-        boolean integrity = true;
-        /*try {
-            integrity = checkIntegrity(input);
-        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
-            System.out.println("Error checking message integrity - " + e.getMessage());
-        }*/
-        Signature myVerifySign = null;
+        Signature myVerifySign;
         boolean verifySign = false;
         try {
             myVerifySign = Signature.getInstance("MD5withRSA");
@@ -267,66 +222,81 @@ public class ChatServer implements Runnable {
             System.out.println("Error [handle] - " + e.getMessage());
         }
 
-        if (verifySign == false) {
+        if (!verifySign) {
             System.out.println(" Error in validating Signature ");
         } else
             System.out.println(" Successfully validated Signature ");
 
-        if (integrity) {
+        if (verifySign) {
             int leaving_id = findClient(ID);
-            if (input.getMessage().equals(".quit")) {
-                // Client exits
-                Message msg = new Message("SERVER", ".quit");
-                clients[leaving_id].send(msg);
-                // Notify remaing users
-                for (int i = 0; i < clientCount; i++)
-                    if (i != leaving_id) {
-                        msg = new Message("SERVER", "Client " + username + " exits..");
-                        clients[i].send(msg);
+            switch (input.getMessage()) {
+                case ".quit":
+                    // Client exits
+                    Message msg = new Message("SERVER", ".quit");
+                    clients[leaving_id].send(msg);
+                    // Notify remaing users
+                    for (int i = 0; i < clientCount; i++)
+                        if (i != leaving_id) {
+                            msg = new Message("SERVER", "Client " + username + " exits..");
+
+                            byte[] byteSignedData = null;
+                            Message msgToSend = null;
+                            try {
+                                msgToSend = clients[findClient(ID)].integrity(msg);
+                                //System.out.println(msgToSend.getDigest().toString());
+                                byteSignedData = null;
+                                Signature mySign = Signature.getInstance("MD5withRSA");
+                                mySign.initSign(privateKey);
+                                mySign.update(msgToSend.getStrMDofDataToTransmit().getBytes());
+                                byteSignedData = mySign.sign();
+                            } catch (Exception e) {
+                                System.out.println("Error [handle] - " + e.getMessage());
+                            }
+                            msgToSend.setDigest(byteSignedData);
+                            clients[i].send(msgToSend);
+                        }
+                    remove(ID);
+                    break;
+                default:
+                    // Brodcast message for every other client online
+                    SecretKey srcKey = clients[leaving_id].lookUser(username);
+                    for (int i = 0; i < clientCount; i++) {
+                        msg = new Message("", "");
+                        msg = input;
+                        SecretKey destKey = clients[i].lookUser(clients[i].username);
+                        Cipher c;
+                        try {
+                            c = Cipher.getInstance("DES/ECB/PKCS5Padding");
+                            c.init(Cipher.ENCRYPT_MODE, destKey);
+                            byte[] ciphertext = c.doFinal(
+                                    srcKey.getEncoded());
+                            msg.setEncryptedPubKey(ciphertext);
+                            byte[] byteSignedData = null;
+                            Message msgToSend = null;
+                            try {
+                                msgToSend = clients[findClient(ID)].integrity(msg);
+                                //System.out.println(msgToSend.getDigest().toString());
+                                byteSignedData = null;
+                                Signature mySign = Signature.getInstance("MD5withRSA");
+                                mySign.initSign(privateKey);
+                                mySign.update(msgToSend.getStrMDofDataToTransmit().getBytes());
+                                byteSignedData = mySign.sign();
+                            } catch (Exception e) {
+                                System.out.println("Error [handle] - " + e.getMessage());
+                            }
+                            msgToSend.setDigest(byteSignedData);
+                            clients[i].send(msgToSend);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
-                remove(ID);
-            } else if (input.getMessage().equals("RENEW")) {
-                try {
-                    clients[findClient(ID)].keyAgreement();
-                } catch (Exception e) {
-                    System.out.println("USER NOT FOUN " + username);
-                }
-            } else {
-                // Brodcast message for every other client online
-                SecretKey srcKey = clients[leaving_id].lookUser(username);
-                for (int i = 0; i < clientCount; i++) {
-                    Message msg = new Message("", "");
-                    msg = input;
-                    SecretKey destKey = clients[i].lookUser(clients[i].username);
-                    Cipher c = null;
-                    try {
-                        c = Cipher.getInstance("DES/ECB/PKCS5Padding");
-                        c.init(Cipher.ENCRYPT_MODE, destKey);
-                        byte[] ciphertext = c.doFinal(
-                                srcKey.getEncoded());
-                        msg.setEncryptedPubKey(ciphertext);
-                        clients[i].send(msg);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+                    break;
             }
         } else {
             System.out.println("Integrity test failed.");
         }
 
 
-    }
-
-    private boolean checkIntegrity(Message input) throws NoSuchAlgorithmException, UnsupportedEncodingException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        byte[] ba = (input.getUsername() + input.getMessage()).getBytes("UTF8");
-        md.update(ba);
-        byte[] digest = md.digest();
-        if (Arrays.equals(digest, input.getDigest()))
-            return true;
-        else
-            return false;
     }
 
     public synchronized void remove(int ID) {
@@ -372,24 +342,20 @@ public class ChatServer implements Runnable {
 }
 
 class ChatServerThread extends Thread {
-    public ObjectInputStream ois;
+    private ObjectInputStream ois;
     public ObjectOutputStream oos;
-    public ObjectInputStream sois;
-    public ObjectOutputStream soos;
-    Message msg;
+    private Message msg;
     private ChatServer server = null;
     private Socket socket = null;
-    private Socket sslsocket = null;
     private int ID = -1;
-    private DataInputStream streamIn = null;
-    private DataOutputStream streamOut = null;
+    private final DataInputStream streamIn = null;
+    private final DataOutputStream streamOut = null;
     private BigInteger clientP;
     private java.math.BigInteger clientG;
     private int clientL;
-    private byte[] clientKey;
     private byte[] serverKey;
-    protected String username;
-    protected long timestamp;
+    String username;
+    final long timestamp;
 
     public ChatServerThread(ChatServer _server, Socket _socket) {
         super();
@@ -419,6 +385,11 @@ class ChatServerThread extends Thread {
     }
 
     // Runs thread
+
+    /**
+     * Método são recebidas as mensagens dos clientes. Primeirament faz juntamente com o cliente a criação da chave
+     * simetrica. Posteriormente guarda essa chave. Por fim fica infinitamente à escuta de novas mensagens.
+     */
     public void run() {
         System.out.println("Server Thread " + ID + " running.");
         SecretKey userSecretKey = null;
@@ -427,59 +398,6 @@ class ChatServerThread extends Thread {
             //ois.reset();
             username = msg.getUsername();
             userSecretKey = lookUser(msg.getUsername());
-            //System.out.println("userExists = " + userSecretKey.toString());
-
-            /*// Get the default SSLSocketFactory
-            SSLSocketFactory sf = ((SSLSocketFactory) SSLSocketFactory.getDefault());
-            // Wrap 'socket' from above in a SSL socket
-            InetSocketAddress remoteAddress = (InetSocketAddress) socket.getRemoteSocketAddress();
-
-            SSLSocket s = (SSLSocket) (sf.createSocket(socket, remoteAddress.getHostName(), socket.getPort(), true));
-
-            // we are a server
-            s.setUseClientMode(false);
-
-            // allow all supported protocols and cipher suites
-            s.setEnabledProtocols(s.getSupportedProtocols());
-            s.setEnabledCipherSuites(s.getSupportedCipherSuites());
-            System.out.println("HANDSHAKE WITH " + ID);
-            // and go!
-            s.startHandshake();
-            System.out.println("HANDSHAKE FINISHED");
-
-            // continue communication on 'socket'
-            sslsocket = s;
-            open2();*/
-
-            /*// Key store for your own private key and signing certificate
-            InputStream keyStoreResource = new FileInputStream(server.keystoreFilename);
-            char[] keyStorePassphrase = server.fileKey.toCharArray();
-            KeyStore ksKeys = KeyStore.getInstance("JKS");
-            ksKeys.load(keyStoreResource, keyStorePassphrase);
-
-            // KeyManager decides which key material to use.
-            KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
-            kmf.init(ksKeys, keyStorePassphrase);
-
-            // Trust store contains certificates of trusted certificate authorities.
-            // Needed for client certificate validation.
-            InputStream trustStoreIS = new FileInputStream("truststore.certs");
-            char[] trustStorePassphrase = server.fileKey.toCharArray();
-            KeyStore ksTrust = KeyStore.getInstance("JKS");
-            ksTrust.load(trustStoreIS, trustStorePassphrase);
-
-            // TrustManager decides which certificate authorities to use
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
-            tmf.init(ksTrust);
-
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-
-            // Get your own custom SSLSocketFactory
-            sf = sslContext.getSocketFactory();
-
-            // Client must authenticate
-            s.setNeedClientAuth(true);*/
 
         } catch (Exception e) {
             System.out.println("Exception - " + e.getMessage());
@@ -487,7 +405,7 @@ class ChatServerThread extends Thread {
         }
         try {
             if (userSecretKey != null) {
-                msg.setMessage("CONFERE");
+                //msg.setMessage("CONFERE");
                 oos.writeObject(msg);
                 oos.flush();
                 oos.reset();
@@ -520,6 +438,12 @@ class ChatServerThread extends Thread {
         }
     }
 
+    /**
+     * Este método recebe a chave simetrica gerada por mutuo acorde entre server e client e guarda-a na keystore
+     *
+     * @param username Nome de utilizador do cliente
+     * @param key      Chave simétrica
+     */
     private void storeKey(String username, SecretKey key) {
         System.out.println(key.toString());
         KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(server.keyStorePassword.toCharArray());
@@ -548,7 +472,12 @@ class ChatServerThread extends Thread {
         }
     }
 
-    protected SecretKey keyAgreement() {
+    /**
+     * Este método é responsável por criar a chave simetrica atraves de mutuo acordo entre client e server.
+     *
+     * @return SecretKey chave simetrica gerada
+     */
+    SecretKey keyAgreement() {
         Message msg;
         // Step 3:  Server uses the parameters supplied by client
         //		to generate a key pair and sends the public key
@@ -559,7 +488,7 @@ class ChatServerThread extends Thread {
             clientG = msg.getG();
             clientL = msg.getL();
             byte[] clientPubKey = msg.getPubKey();
-            System.out.println("ClientPubKey - " + clientPubKey.hashCode());
+            System.out.println("ClientPubKey - " + Arrays.hashCode(clientPubKey));
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
             DHParameterSpec dhSpec = new DHParameterSpec(clientP, clientG, clientL);
             kpg.initialize(dhSpec);
@@ -587,8 +516,7 @@ class ChatServerThread extends Thread {
             // Step 6:  Server generates a DES key
             SecretKeyFactory skf = SecretKeyFactory.getInstance("DES");
             DESKeySpec desSpec = new DESKeySpec(secret);
-            SecretKey key = skf.generateSecret(desSpec);
-            return key;
+            return skf.generateSecret(desSpec);
         } catch (Exception e) {
             System.out.println("Error [keyAgreement] - " + e.getMessage());
         }
@@ -596,11 +524,17 @@ class ChatServerThread extends Thread {
         return null;
     }
 
-    protected SecretKey lookUser(String username) {
+    /**
+     * Este método recebe o nome de utilizador e procura na keystore por uma entrada do mesmo.
+     *
+     * @param username Nome de utilizador do cliente
+     * @return myPrivateKey      Chave simétrica
+     */
+    SecretKey lookUser(String username) {
         System.out.println("looking for user");
         char[] password = server.keyStorePassword.toCharArray();
-        FileInputStream fIn = null;
-        KeyStore keystore = null;
+        FileInputStream fIn;
+        KeyStore keystore;
 
         try {
             fIn = new FileInputStream(server.keyStoreFilename);
@@ -608,10 +542,10 @@ class ChatServerThread extends Thread {
             keystore.load(fIn, password);
             KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(password);
             // get my private key
-            KeyStore.SecretKeyEntry pkEntry = null;
+            KeyStore.SecretKeyEntry pkEntry;
             pkEntry = (KeyStore.SecretKeyEntry) keystore.getEntry(username, protParam);
             SecretKey myPrivateKey = pkEntry.getSecretKey();
-            System.out.println(keystore.hashCode());
+            //System.out.println(keystore.hashCode());
             return myPrivateKey;
         } catch (Exception e) {
             e.printStackTrace();
@@ -620,23 +554,23 @@ class ChatServerThread extends Thread {
 
     }
 
-    protected Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    Message integrity(Message msg) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("MD5");
-        byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes("UTF8");
+        byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes();
         md.update(ba);
         byte[] digest = md.digest();
         msg.setDigest(digest);
+        String strMDofDataToTransmit = "";
+        for (byte aDigest : digest) {
+            strMDofDataToTransmit = strMDofDataToTransmit + Integer.toHexString((int) aDigest & 0xFF);
+        }
+        msg.setstrMDofDataToTransmit(strMDofDataToTransmit);
         System.out.println("Result: Successfully hashed");
         return msg;
     }
 
-
     // Opens thread
     public void open() throws IOException {
-       /* streamIn = new DataInputStream(new
-                BufferedInputStream(socket.getInputStream()));
-        streamOut = new DataOutputStream(new
-                BufferedOutputStream(socket.getOutputStream()));*/
 
         ois = new ObjectInputStream(new
                 BufferedInputStream(socket.getInputStream()));
@@ -644,17 +578,6 @@ class ChatServerThread extends Thread {
                 BufferedOutputStream(socket.getOutputStream()));
         oos.flush();
         // oos.reset();
-    }
-
-    public void open2() throws IOException {
-        soos = new ObjectOutputStream(new
-                BufferedOutputStream(sslsocket.getOutputStream()));
-        soos.flush();
-        System.out.println("SOOS");
-        ois = new ObjectInputStream(new
-                BufferedInputStream(sslsocket.getInputStream()));
-        System.out.println("SOIS");
-        //soos.reset();
     }
 
     // Closes thread
@@ -667,8 +590,9 @@ class ChatServerThread extends Thread {
 
 }
 
+//classe responsável pela gestao de chaves
 class KeyManagement extends Thread {
-    private ChatServer server;
+    private final ChatServer server;
 
     KeyManagement(ChatServer server) {
         this.server = server;
@@ -685,6 +609,10 @@ class KeyManagement extends Thread {
         }
     }
 
+    /**
+     * Este método verifica à quando tempo os clientes se encontram online. Se ultrapassarem um certo limite
+     * são obrigados a renovar as chaves.
+     */
     private void checkKeys() {
         for (int i = 0; i < server.clientCount; i++) {
             if (System.currentTimeMillis() - server.clients[i].timestamp > 30000) {
@@ -729,7 +657,5 @@ class KeyManagement extends Thread {
             }
         }
     }
-
-
 }
 

@@ -1,5 +1,4 @@
 
-import Utilities.CryptoException;
 import Utilities.CryptoUtils;
 import org.apache.commons.codec.DecoderException;
 
@@ -7,17 +6,16 @@ import javax.crypto.*;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DESKeySpec;
 import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
 import java.math.BigInteger;
 import java.net.*;
 import java.io.*;
-import java.nio.file.Files;
 import java.security.*;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Scanner;
 
 import static org.apache.commons.codec.binary.Hex.decodeHex;
@@ -26,18 +24,16 @@ import static org.apache.commons.io.FileUtils.readFileToByteArray;
 import static org.apache.commons.io.FileUtils.writeStringToFile;
 
 
-public class ChatClient implements Runnable {
+class ChatClient implements Runnable {
     private Socket socket = null;
     private Thread thread = null;
     private DataInputStream console = null;
     //private ObjectOutputStream oos = null;
     private ChatClientThread client = null;
-    private boolean secureConnection = false;
-    private String username;
-    protected String keyStoreFilename = "my.keystore";
-    protected String PASSWORD = "verygoodpassword";
+    private final String username;
+    final String PASSWORD = "verygoodpassword";
 
-    public ChatClient(String serverName, int serverPort) {
+    private ChatClient(String serverName, int serverPort) {
         System.out.println("Establishing connection to server...");
         Scanner sc = new Scanner(System.in);
 
@@ -64,9 +60,6 @@ public class ChatClient implements Runnable {
                 // Sends message from console to server
                 Message msg = new Message(username, console.readLine());
                 client.sendMessage(msg);
-                /*client.soos.writeObject(msg);
-                client.soos.flush();
-                client.soos.reset();*/
             } catch (IOException ioexception) {
                 System.out.println("Error sending string to server: " + ioexception.getMessage());
                 stop(false);
@@ -74,26 +67,66 @@ public class ChatClient implements Runnable {
         }
     }
 
+    private PublicKey loadPubKeys(String pubName) {
+        ObjectInputStream oin = null;
+        CryptoUtils cu = new CryptoUtils();
+        PublicKey senderPublicKey = null;
+        try {
+            //cu.decrypt(keyStorePassword, new File(pubNameEnc), new File(pubName));
+            FileInputStream in = new FileInputStream(pubName);
+            oin = new ObjectInputStream(new BufferedInputStream(in));
 
+            BigInteger m = (BigInteger) oin.readObject();
+            BigInteger e = (BigInteger) oin.readObject();
+            RSAPublicKeySpec keySpec = new RSAPublicKeySpec(m, e);
+            KeyFactory fact = KeyFactory.getInstance("RSA");
+            senderPublicKey = fact.generatePublic(keySpec);
+
+        } catch (Exception e) {
+            //throw new RuntimeException("Spurious serialisation error", e);
+            System.out.println("Error [loadPubKeys] - " + e.getMessage());
+        } finally {
+            try {
+                oin.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        //System.out.println("BENFICACACACA "+senderPublicKey.hashCode());
+        return senderPublicKey;
+    }
+
+
+    /**
+     * Trata da mensagem recebida.
+     *
+     * @param msg Mensagem recebida
+     * @param key Mensagem que o cliente recebeu
+     */
     public void handle(Message msg, SecretKey key) {
+        Signature myVerifySign;
+        boolean verifySign = false;
+        try {
+            myVerifySign = Signature.getInstance("MD5withRSA");
+            myVerifySign.initVerify(loadPubKeys("serverpublic.key"));
+            myVerifySign.update(msg.getStrMDofDataToTransmit().getBytes());
+            verifySign = myVerifySign.verify(msg.getDigest());
+        } catch (Exception e) {
+            System.out.println("Error [handle] - " + e.getMessage());
+        }
+
+        if (!verifySign) {
+            System.out.println(" Error in validating Signature ");
+            return;
+        } else
+            System.out.println(" Successfully validated Signature ");
+
         // Receives message from server
         if (msg.getUsername().equals("SERVER") && msg.getMessage().equals(".quit")) {
             // Leaving, quit command
             System.out.println("Exiting...Please press RETURN to exit ...");
             stop(false);
         } else if (msg.getUsername().equals("SERVER") && msg.getMessage().equals("RENEWKEY")) {
-           /* msg = new Message(username, "RENEW");
-            try {
-                msg.setUsername(username);
-                msg = client.integrity(msg);
-                client.sendMessage(msg);
-                client.oos.writeObject(msg);
-                client.oos.flush();
-                client.oos.reset();
-                client.keyAgreement();
-            } catch (NoSuchAlgorithmException | IOException e) {
-                e.printStackTrace();
-            }*/
             System.out.println("Restart client to create new key");
             stop(true);
 
@@ -102,25 +135,24 @@ public class ChatClient implements Runnable {
             System.out.println(msg.getUsername() + " " + msg.getMessage());
         else {
             // Step 8:  Client receives the encrypted text and decrypts it
-            Cipher c = null;
+            Cipher c;
             try {
                 c = Cipher.getInstance("DES/ECB/PKCS5Padding");
                 c.init(Cipher.DECRYPT_MODE, key);
                 byte encodedKey[] = c.doFinal(msg.getEncryptedPubKey());
                 SecretKey decryptKey = new SecretKeySpec(encodedKey, "DES");
-                c = Cipher.getInstance("DES/ECB/PKCS5Padding");
-                c.init(Cipher.DECRYPT_MODE, decryptKey);
+                c = Cipher.getInstance("DES/CBC/PKCS5Padding");
+                c.init(Cipher.DECRYPT_MODE, decryptKey, new IvParameterSpec(msg.getIv()));
                 byte plaintext[] = c.doFinal(msg.getEncryptedMessage());
                 System.out.println(msg.getUsername() + " " + new String(plaintext));
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
         }
     }
 
     // Inits new client thread
-    public void start(String username) throws IOException {
+    private void start(String username) {
         console = new DataInputStream(System.in);
         //oos = new ObjectOutputStream(socket.getOutputStream());
         if (thread == null) {
@@ -203,17 +235,10 @@ public class ChatClient implements Runnable {
 
 class ChatClientThread extends Thread {
     private Socket socket = null;
-    private Socket sslsocket = null;
     private ChatClient client = null;
     private ObjectInputStream ois = null;
-    protected ObjectOutputStream oos = null;
-    private ObjectInputStream sois = null;
-    protected ObjectOutputStream soos = null;
-    private String username;
-    private BigInteger clientG;
-    private BigInteger clientP;
-    private int clientL;
-    private byte[] clientKey;
+    private ObjectOutputStream oos = null;
+    private final String username;
     private SecretKey key = null;
     private PublicKey publicKey;
     private PrivateKey privateKey;
@@ -226,7 +251,7 @@ class ChatClientThread extends Thread {
         start();
     }
 
-    public void open() {
+    private void open() {
         // System.out.println("OPEN");
         try {
             oos = new ObjectOutputStream(socket.getOutputStream());
@@ -240,30 +265,11 @@ class ChatClientThread extends Thread {
         }
     }
 
-    public void open2() {
-        //System.out.println("OPEN2");
-        try {
-            ois = new ObjectInputStream(sslsocket.getInputStream());
-            //System.out.println("SOIS");
-            oos = new ObjectOutputStream(sslsocket.getOutputStream());
-            oos.flush();
-            //oos.reset();
-            // System.out.println("SOOS");
-
-        } catch (IOException ioe) {
-            System.out.println("Error getting input stream: " + ioe);
-            client.stop(false);
-        }
-    }
-
 
     public void close() {
         try {
             if (ois != null) ois.close();
             if (oos != null) oos.close();
-            //if (sois != null) sois.close();
-            //if (soos != null) soos.close();
-            //if (sslsocket != null) sslsocket.close();
         } catch (IOException ioe) {
             System.out.println("Error closing input/output stream: " + ioe);
         }
@@ -277,25 +283,6 @@ class ChatClientThread extends Thread {
             oos.writeObject(msg);
             oos.reset();
 
-            /*SSLSocketFactory sf = ((SSLSocketFactory) SSLSocketFactory.getDefault());
-            // Wrap 'socket' from above in a SSL socket
-            InetSocketAddress remoteAddress = (InetSocketAddress) socket.getRemoteSocketAddress();
-
-            SSLSocket s = (SSLSocket) (sf.createSocket(socket, remoteAddress.getHostName(), socket.getPort(), true));
-
-            // we are a client
-            s.setUseClientMode(true);
-
-            // allow all supported protocols and cipher suites
-            s.setEnabledProtocols(s.getSupportedProtocols());
-            s.setEnabledCipherSuites(s.getSupportedCipherSuites());
-            System.out.println("HANDSHAKE");
-            // and go!
-            s.startHandshake();
-            System.out.println("HANDSHAKE OVER");
-            // continue communication on 'socket'
-            sslsocket = s;
-            open2();*/
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -311,7 +298,7 @@ class ChatClientThread extends Thread {
             System.out.println("KeyAgreement finished - " + key.hashCode());
             System.out.println("Creating Priv/Pub keys");
             generatePrivPubKeys();
-            System.out.println("Finished Creating Priv/Pub keys "+publicKey.hashCode());
+            System.out.println("Finished Creating Priv/Pub keys " + publicKey.hashCode());
             try {
                 saveKey(key, new File(username + "sym.key"), new File(username + "symencrypted.key"));
             } catch (IOException e) {
@@ -340,29 +327,43 @@ class ChatClientThread extends Thread {
         }
     }
 
+    /**
+     * Carrega as chaves publica e privada do utilizador.
+     *
+     * @param pubName     Nome do ficheiro da chave publica
+     * @param privName    Nome do ficheiro da chave privada
+     * @param privNameEnc Nome do ficheiro encriptado da chave privada
+     * @return A chave publica do utilizador ou null
+     */
     private void loadPrivPubKeys(String pubName, String privName, String privNameEnc) {
+
+        //System.out.println(pubName + " " + privName +" "+privNameEnc);
         ObjectInputStream oin = null;
         CryptoUtils cu = new CryptoUtils();
         try {
             //cu.decrypt(client.PASSWORD, new File(pubNameEnc), new File(pubName));
-            FileInputStream in = new FileInputStream(pubName);
+            //FileInputStream in = new FileInputStream(pubName);
+            InputStream in = ChatClient.class.getResourceAsStream(pubName);
             oin = new ObjectInputStream(new BufferedInputStream(in));
 
             BigInteger m = (BigInteger) oin.readObject();
             BigInteger e = (BigInteger) oin.readObject();
+            //System.out.println("NANA "+m+ " "+e);
             RSAPublicKeySpec keySpec = new RSAPublicKeySpec(m, e);
             KeyFactory fact = KeyFactory.getInstance("RSA");
             publicKey = fact.generatePublic(keySpec);
 
-            cu.decrypt(client.PASSWORD, new File(privNameEnc), new File(privName));
-            in = new FileInputStream(privName);
+            CryptoUtils.decrypt(client.PASSWORD, new File(privNameEnc), new File(privName));
+            //in = new FileInputStream(privName);
+            in = ChatClient.class.getResourceAsStream(privName);
             oin = new ObjectInputStream(new BufferedInputStream(in));
 
             m = (BigInteger) oin.readObject();
             e = (BigInteger) oin.readObject();
-            keySpec = new RSAPublicKeySpec(m, e);
+            //System.out.println("NANA "+m+ " "+e);
+            RSAPrivateKeySpec keySpecP = new RSAPrivateKeySpec(m, e);
             fact = KeyFactory.getInstance("RSA");
-            privateKey = fact.generatePrivate(keySpec);
+            privateKey = fact.generatePrivate(keySpecP);
         } catch (Exception e) {
             //throw new RuntimeException("Spurious serialisation error", e);
             e.printStackTrace();
@@ -371,25 +372,23 @@ class ChatClientThread extends Thread {
                 oin.close();
             } catch (IOException e) {
                 //e.printStackTrace();
-                System.out.println("Error [loadPrivPubKeys] - "+e.getMessage());
+                System.out.println("Error [loadPrivPubKeys] - " + e.getMessage());
             }
         }
     }
 
-    public void saveToFile(String fileName, BigInteger mod, BigInteger exp) throws IOException {
-        ObjectOutputStream oout = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)));
-        try {
+    private void saveToFile(String fileName, BigInteger mod, BigInteger exp) throws IOException {
+        //System.out.println("NANA "+mod+ " "+exp);
+        try (ObjectOutputStream oout = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(fileName)))) {
             oout.writeObject(mod);
             oout.writeObject(exp);
         } catch (Exception e) {
             throw new IOException("Unexpected error", e);
-        } finally {
-            oout.close();
         }
     }
 
     private void generatePrivPubKeys() {
-        KeyPairGenerator kpg = null;
+        KeyPairGenerator kpg;
         try {
             kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(1024);
@@ -402,8 +401,9 @@ class ChatClientThread extends Thread {
 
             saveToFile(username + "public.key", pub.getModulus(), pub.getPublicExponent());
             saveToFile(username + "private.key", priv.getModulus(), priv.getPrivateExponent());
+
             CryptoUtils cu = new CryptoUtils();
-            cu.encrypt(client.PASSWORD, new File(username + "private.key"), new File(username + "privateencrypted.key"));
+            CryptoUtils.encrypt(client.PASSWORD, new File(username + "private.key"), new File(username + "privateencrypted.key"));
         } catch (Exception e) {
             System.out.println("Error [generatePrivPubKeys] - " + e.getMessage());
         }
@@ -411,11 +411,7 @@ class ChatClientThread extends Thread {
 
     private SecretKey loadSymKey(File fileInput, File fileOutput) throws IOException {
         CryptoUtils cu = new CryptoUtils();
-        try {
-            cu.decrypt(client.PASSWORD, fileInput, fileOutput);
-        } catch (CryptoException e) {
-            System.out.println("Error [loadSymKey] - " + e.getMessage());
-        }
+        CryptoUtils.decrypt(client.PASSWORD, fileInput, fileOutput);
         String data = new String(readFileToByteArray(fileOutput));
         char[] hex = data.toCharArray();
         byte[] encoded;
@@ -426,8 +422,7 @@ class ChatClientThread extends Thread {
             e.printStackTrace();
             return null;
         }
-        SecretKey key = new SecretKeySpec(encoded, "DES");
-        return key;
+        return new SecretKeySpec(encoded, "DES");
     }
 
     private void saveKey(SecretKey key, File fileInput, File fileOutput) throws IOException {
@@ -436,17 +431,13 @@ class ChatClientThread extends Thread {
         String data = String.valueOf(hex);
         writeStringToFile(fileInput, data);
         CryptoUtils cu = new CryptoUtils();
-        try {
-            cu.encrypt(client.PASSWORD, fileInput, fileOutput);
-        } catch (CryptoException e) {
-            System.out.println("Error [saveKey] - " + e.getMessage());
-        }
+        CryptoUtils.encrypt(client.PASSWORD, fileInput, fileOutput);
     }
 
-    protected SecretKey keyAgreement() {
+    private SecretKey keyAgreement() {
         System.out.println("starting key agreement");
         // Step 1:  Client generates a key pair
-        KeyPairGenerator kpg = null;
+        KeyPairGenerator kpg;
         //SecretKey key = null;
         Message msg = new Message("", "");
         try {
@@ -457,10 +448,10 @@ class ChatClientThread extends Thread {
             // 		Diffie-Hellman key parameters to Bob
             Class dhClass = Class.forName("javax.crypto.spec.DHParameterSpec");
             DHParameterSpec dhSpec = ((DHPublicKey) kp.getPublic()).getParams();
-            clientG = dhSpec.getG();
-            clientP = dhSpec.getP();
-            clientL = dhSpec.getL();
-            clientKey = kp.getPublic().getEncoded();
+            BigInteger clientG = dhSpec.getG();
+            BigInteger clientP = dhSpec.getP();
+            int clientL = dhSpec.getL();
+            byte[] clientKey = kp.getPublic().getEncoded();
             //System.out.println("dhSpecClient - "+dhSpec.hashCode());
             System.out.println("ClientPubKey - " + kp.getPublic().hashCode());
             msg.setG(clientG);
@@ -478,7 +469,7 @@ class ChatClientThread extends Thread {
             //		protocol with Server's public key
             msg = (Message) ois.readObject();
             byte[] serverPubKey = msg.getPubKey();
-            System.out.println("serverPubKey - " + serverPubKey.hashCode());
+            System.out.println("serverPubKey - " + Arrays.hashCode(serverPubKey));
             KeyFactory kf = KeyFactory.getInstance("DH");
             X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(serverPubKey);
             PublicKey pk = kf.generatePublic(x509Spec);
@@ -500,8 +491,12 @@ class ChatClientThread extends Thread {
         try {
             // Step 7:  Client encrypts data with the key and sends
             //		the encrypted data to Server
-            Cipher c = Cipher.getInstance("DES/ECB/PKCS5Padding");
-            c.init(Cipher.ENCRYPT_MODE, key);
+            final int DES_KEYLENGTH = 64;    // change this as desired for the security level you want
+            byte[] iv = new byte[DES_KEYLENGTH / 8];    // Save the IV bytes or send it in plaintext with the encrypted data so you can decrypt the data later
+            SecureRandom prng = new SecureRandom();
+            prng.nextBytes(iv);
+            Cipher c = Cipher.getInstance("DES/CBC/PKCS5Padding");
+            c.init(Cipher.ENCRYPT_MODE, key, new IvParameterSpec(iv));
             byte[] ciphertext = c.doFinal(msg.getMessage().getBytes());
             msg.setEncryptedMessage(ciphertext);
             Message msgToSend = integrity(msg);
@@ -511,23 +506,25 @@ class ChatClientThread extends Thread {
             mySign.update(msgToSend.getStrMDofDataToTransmit().getBytes());
             byte[] byteSignedData = mySign.sign();
             msgToSend.setDigest(byteSignedData);
+            msgToSend.setIv(iv);
             oos.writeObject(msgToSend);
             oos.flush();
             oos.reset();
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            System.out.println("Erro [sendMessage] - " + e.getMessage());
         }
     }
 
-    protected Message integrity(Message msg) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    private Message integrity(Message msg) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("MD5");
         byte[] ba = (msg.getUsername() + msg.getMessage()).getBytes();
         md.update(ba);
         byte[] digest = md.digest();
         msg.setDigest(digest);
-        String strMDofDataToTransmit = new String();
-        for (int i = 0; i < digest.length; i++){
-            strMDofDataToTransmit = strMDofDataToTransmit + Integer.toHexString((int)digest[i] & 0xFF) ;
+        String strMDofDataToTransmit = "";
+        for (byte aDigest : digest) {
+            strMDofDataToTransmit = strMDofDataToTransmit + Integer.toHexString((int) aDigest & 0xFF);
         }
         msg.setstrMDofDataToTransmit(strMDofDataToTransmit);
         System.out.println("Result: Successfully hashed");

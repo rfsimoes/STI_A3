@@ -1,12 +1,10 @@
-import javax.crypto.spec.DHParameterSpec;
 import java.io.Serializable;
 import java.math.BigInteger;
-import java.security.PublicKey;
 
 /**
  * Created by Ricardo Simões on 19/05/2015.
  */
-public class Message implements Serializable {
+class Message implements Serializable {
 
     private String username;
     private String message;
@@ -17,6 +15,7 @@ public class Message implements Serializable {
     private int L;
     private byte[] digest;
     private String strMDofDataToTransmit;
+    private byte[] iv;
 
     Message(String username, String message) {
         this.username = username;
@@ -26,6 +25,14 @@ public class Message implements Serializable {
         this.L = 0;
         this.pubKey = null;
         this.encryptedMessage = null;
+    }
+
+    public byte[] getIv() {
+        return iv;
+    }
+
+    public void setIv(byte[] iv) {
+        this.iv = iv;
     }
 
     public String getUsername() {

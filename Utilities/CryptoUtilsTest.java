@@ -11,13 +11,13 @@ import java.util.HashMap;
  *
  * @author www.codejava.net
  */
-public class CryptoUtilsTest {
+class CryptoUtilsTest {
     public static void main(String[] args) {
         String key = "verygoodpassword";
         File inputFile = new File("files/usersInformationDecrypted");
         File encryptedFile = new File("files/usersInformationEncrypted");
         File decryptedFile = new File("files/usersInformationDecrypted");
-        HashMap<String,String> hash = new HashMap<String, String>();
+        HashMap<String,String> hash = new HashMap<>();
         hash.put("rfsimoes","benfica");
         hash.put("amdinis","porto");
 
@@ -29,9 +29,6 @@ public class CryptoUtilsTest {
             encryptedFile.createNewFile();
             CryptoUtils.encrypt(key, inputFile, encryptedFile);
             //CryptoUtils.decrypt(key, encryptedFile, decryptedFile);
-        } catch (CryptoException ex) {
-            System.out.println(ex.getMessage());
-            ex.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
